@@ -26,6 +26,7 @@ export interface User {
   casualLeavesTotal?: number;
   sickLeavesUsed?: number;
   sickLeavesTotal?: number;
+  joiningDate?: string; // Add this
   status: string;
   createdAt: string;
   updatedAt: string;
