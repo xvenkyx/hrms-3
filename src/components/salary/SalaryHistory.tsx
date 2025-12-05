@@ -25,6 +25,7 @@ import { Loader2, Filter, Download, Eye, AlertCircle, CheckCircle, RefreshCw } f
 import { getSalaryHistory, getMySalaryHistory } from "@/api/salary";
 import { fetchEmployees } from "@/api/salary";
 import { useAuth } from "@/contexts/AuthContext";
+import { normalizeSalarySlip } from "@/utils/salary";
 
 const SalaryHistory: React.FC = () => {
   const [salarySlips, setSalarySlips] = useState<any[]>([]);
