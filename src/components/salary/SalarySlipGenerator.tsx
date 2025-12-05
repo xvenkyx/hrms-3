@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Download, RefreshCw, Search, AlertCircle, CheckCircle } from 'lucide-react';
 import { generateSalarySlip, getSalarySlip, fetchEmployees } from '@/api/salary';
+import { normalizeSalarySlip } from '@/utils/salary';
 
 interface Employee {
   employeeId: string;
@@ -63,7 +64,7 @@ const SalarySlipGenerator: React.FC = () => {
     setLoading(true);
     try {
       const response = await getSalarySlip(selectedEmployee, yearMonth);
-      setSalarySlip(response.slip);
+      setSalarySlip(response.slip ? normalizeSalarySlip(response.slip) : null);
       setMessage({ text: '✓ Existing salary slip found', type: 'success' });
     } catch (error: any) {
       if (error.message.includes('not found')) {
@@ -90,8 +91,8 @@ const SalarySlipGenerator: React.FC = () => {
         yearMonth,
         forceRegenerate,
       });
-      
-      setSalarySlip(response.slip);
+
+      setSalarySlip(response.slip ? normalizeSalarySlip(response.slip) : null);
       setMessage({ text: response.message, type: 'success' });
     } catch (error: any) {
       setMessage({ text: error.message || 'Failed to generate salary slip', type: 'error' });
