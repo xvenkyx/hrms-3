@@ -15,7 +15,7 @@ import MyProfile from '@/pages/MyProfile';
 import EditProfile from '@/pages/EditProfile';
 import Settings from '@/pages/Settings';
 
-// Import salary components
+// Salary components
 import SalarySlipGenerator from '@/components/salary/SalarySlipGenerator';
 import SalaryHistory from '@/components/salary/SalaryHistory';
 
@@ -49,23 +49,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="my-profile" element={<MyProfile />} />
             <Route path="edit-profile" element={<EditProfile />} />
             <Route path="settings" element={<Settings />} />
+
             
-            {/* Add salary routes */}
+            {/* Keep separate routes for specific features */}
             <Route path="salary/generate" element={
               <ProtectedRoute allowedRoles={['admin', 'hr']}>
                 <SalarySlipGenerator />
               </ProtectedRoute>
             } />
-            <Route path="salary/history" element={
-              <ProtectedRoute allowedRoles={['admin', 'hr']}>
-                <SalaryHistory />
-              </ProtectedRoute>
-            } />
-            <Route path="my-salary" element={
-              <ProtectedRoute allowedRoles={['employee']}>
-                <SalaryHistory />
-              </ProtectedRoute>
-            } />
+            <Route path="salary/history" element={<SalaryHistory />} />
+            <Route path="my-salary" element={<SalaryHistory />} />
           </Route>
         </Routes>
       </BrowserRouter>

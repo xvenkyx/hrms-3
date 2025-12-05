@@ -1,4 +1,4 @@
-// src/components/salary/SalaryHistory.tsx
+import { generateSalaryPDF } from '@/utils/pdf';
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Filter, Download, Eye, AlertCircle, CheckCircle } from "lucide-react";
+import { Loader2, Filter, Download, Eye, AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
 import { getSalaryHistory, getMySalaryHistory } from "@/api/salary";
 import { fetchEmployees } from "@/api/salary";
 import { useAuth } from "@/contexts/AuthContext";
@@ -47,11 +47,19 @@ const SalaryHistory: React.FC = () => {
   const isAdmin = user?.role === "admin" || user?.role === "hr";
 
   useEffect(() => {
-    loadEmployees();
+    if (isAdmin) {
+      loadEmployees();
+    }
     loadSalaryHistory();
   }, [user]);
 
+  useEffect(() => {
+    loadSalaryHistory();
+  }, [page]);
+
   async function loadEmployees() {
+    if (!isAdmin) return;
+    
     try {
       const data = await fetchEmployees();
       setEmployees(data);
@@ -85,8 +93,8 @@ const SalaryHistory: React.FC = () => {
         });
       }
 
-      setSalarySlips(response.slips);
-      setSummary(response.summary);
+      setSalarySlips(response.slips || []);
+      setSummary(response.summary || {});
     } catch (error: any) {
       setMessage({ text: error.message || "Failed to load salary history", type: "error" });
       setTimeout(() => setMessage(null), 5000);
@@ -106,6 +114,31 @@ const SalaryHistory: React.FC = () => {
   const departments = Array.from(
     new Set(employees.map((emp) => emp.department).filter(Boolean))
   ).sort();
+
+  const handleViewSlip = (slip: any) => {
+    // Navigate to slip details or open modal
+    setMessage({ 
+      text: `Viewing slip for ${slip.employeeName} - ${slip.monthName}`, 
+      type: 'info' 
+    });
+  };
+
+  // In SalaryHistory.tsx, update the handleDownloadSlip function:
+
+const handleDownloadSlip = (slip: any) => {
+  try {
+    generateSalaryPDF(slip);
+    setMessage({ 
+      text: `Downloading slip for ${slip.employeeName}`, 
+      type: 'success' 
+    });
+  } catch (error: any) {
+    setMessage({ 
+      text: `Failed to download slip: ${error.message}`, 
+      type: 'error' 
+    });
+  }
+};
 
   return (
     <div className="space-y-6">
@@ -201,6 +234,8 @@ const SalaryHistory: React.FC = () => {
                   placeholder="e.g., 2025"
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
+                  min="2000"
+                  max="2030"
                 />
               </div>
 
@@ -265,7 +300,7 @@ const SalaryHistory: React.FC = () => {
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">
-                      ₹{summary.averageNetSalary?.toLocaleString()}
+                      ₹{(summary.averageNetSalary || 0)?.toLocaleString()}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Avg. Net Salary
@@ -277,7 +312,7 @@ const SalaryHistory: React.FC = () => {
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <div className="text-2xl font-bold">
-                      ₹{summary.totalPF?.toLocaleString()}
+                      ₹{(summary.totalPF || 0)?.toLocaleString()}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Total PF
@@ -289,7 +324,7 @@ const SalaryHistory: React.FC = () => {
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <div className="text-2xl font-bold">
-                      ₹{summary.totalBonus?.toLocaleString()}
+                      ₹{(summary.totalBonus || 0)?.toLocaleString()}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Total Bonus
@@ -306,12 +341,22 @@ const SalaryHistory: React.FC = () => {
               {salarySlips.length} salary record
               {salarySlips.length !== 1 ? "s" : ""} found
             </p>
-            {loading && (
-              <div className="flex items-center text-sm text-blue-600">
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Loading...
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {loading && (
+                <div className="flex items-center text-sm text-blue-600">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Loading...
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadSalaryHistory}
+                disabled={loading}
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Salary Table */}
@@ -319,9 +364,8 @@ const SalaryHistory: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Employee</TableHead>
+                  {isAdmin && <TableHead>Employee</TableHead>}
                   <TableHead>Month</TableHead>
-                  {isAdmin && <TableHead>Department</TableHead>}
                   <TableHead>Basic</TableHead>
                   <TableHead>HRA</TableHead>
                   <TableHead>Fuel</TableHead>
@@ -334,48 +378,57 @@ const SalaryHistory: React.FC = () => {
               <TableBody>
                 {salarySlips.map((slip) => (
                   <TableRow key={slip.slipId}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{slip.employeeName}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {slip.employeeId}
+                    {isAdmin && (
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{slip.employeeName}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {slip.employeeId}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div>{slip.monthName}</div>
                       <div className="text-sm text-muted-foreground">
                         {slip.yearMonth}
                       </div>
                     </TableCell>
-                    {isAdmin && <TableCell>{slip.department}</TableCell>}
-                    <TableCell>₹{slip.basic?.toLocaleString()}</TableCell>
-                    <TableCell>₹{slip.hra?.toLocaleString()}</TableCell>
+                    <TableCell>₹{(slip.basic || 0)?.toLocaleString()}</TableCell>
+                    <TableCell>₹{(slip.hra || 0)?.toLocaleString()}</TableCell>
                     <TableCell>
-                      ₹{slip.fuelAllowance?.toLocaleString()}
+                      ₹{(slip.fuelAllowance || 0)?.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-destructive">
                       ₹
                       {(
-                        slip.pfAmount +
-                        slip.professionalTax +
-                        slip.absentDeduction
+                        (slip.pfAmount || 0) +
+                        (slip.professionalTax || 0) +
+                        (slip.absentDeduction || 0)
                       )?.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-green-600">
-                      {slip.bonus > 0
-                        ? `₹${slip.bonus?.toLocaleString()}`
+                      {(slip.bonus || 0) > 0
+                        ? `₹${(slip.bonus || 0)?.toLocaleString()}`
                         : "-"}
                     </TableCell>
                     <TableCell className="font-semibold">
-                      ₹{slip.netSalary?.toLocaleString()}
+                      ₹{(slip.netSalary || 0)?.toLocaleString()}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleViewSlip(slip)}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDownloadSlip(slip)}
+                        >
                           <Download className="h-4 w-4" />
                         </Button>
                       </div>
@@ -386,7 +439,7 @@ const SalaryHistory: React.FC = () => {
                 {salarySlips.length === 0 && !loading && (
                   <TableRow>
                     <TableCell
-                      colSpan={isAdmin ? 10 : 9}
+                      colSpan={isAdmin ? 9 : 8}
                       className="text-center py-8"
                     >
                       <Alert>
@@ -415,7 +468,7 @@ const SalaryHistory: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => setPage(Math.max(1, page - 1))}
-                  disabled={page === 1}
+                  disabled={page === 1 || loading}
                 >
                   Previous
                 </Button>
@@ -423,7 +476,7 @@ const SalaryHistory: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => setPage(page + 1)}
-                  disabled={salarySlips.length < limit}
+                  disabled={salarySlips.length < limit || loading}
                 >
                   Next
                 </Button>
