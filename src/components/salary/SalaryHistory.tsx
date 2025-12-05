@@ -25,6 +25,7 @@ import { Loader2, Filter, Download, Eye, AlertCircle, CheckCircle } from "lucide
 import { getSalaryHistory, getMySalaryHistory } from "@/api/salary";
 import { fetchEmployees } from "@/api/salary";
 import { useAuth } from "@/contexts/AuthContext";
+import { normalizeSalarySlip } from "@/utils/salary";
 
 const SalaryHistory: React.FC = () => {
   const [salarySlips, setSalarySlips] = useState<any[]>([]);
@@ -85,7 +86,9 @@ const SalaryHistory: React.FC = () => {
         });
       }
 
-      setSalarySlips(response.slips);
+      const normalizedSlips = (response.slips || []).map((slip: any) => normalizeSalarySlip(slip));
+
+      setSalarySlips(normalizedSlips);
       setSummary(response.summary);
     } catch (error: any) {
       setMessage({ text: error.message || "Failed to load salary history", type: "error" });
